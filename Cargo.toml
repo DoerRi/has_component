@@ -1,0 +1,2 @@
+[workspace]
+members = ["has_component", "has_component_derive"]

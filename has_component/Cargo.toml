@@ -1,0 +1,14 @@
+[package]
+name = "has_component"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+has_component_derive = { path = "../has_component_derive" }
+tuple_info = { git = "https://github.com/DoerRi/tuple_info"}
+
+[features]
+default = []
+
+[lib]
+path = "src/lib.rs"
