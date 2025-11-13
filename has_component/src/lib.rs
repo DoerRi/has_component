@@ -1,4 +1,4 @@
-use std::any::{Any, TypeId};
+use std::{any::Any, marker::PhantomData};
 
 pub use has_component_derive::HasComponent;
 use tuple_info::TupleInfo;
@@ -12,15 +12,38 @@ pub trait HasComponent {
         None
     }
 
-    fn component_types() -> Vec<TypeId>;
+    fn component_types() -> Vec<std::any::TypeId>;
 
     fn get_components<'a, C: 'static + TupleInfo>(
         &'a self,
     ) -> Option<<C as TupleInfo>::DeconstructedReference<'a>>
     where
-        Self: HasComponents<'a, C>,
+        Self: Sized,
     {
-        HasComponents::<'a, C>::_get_components(self)
+        // Define Startegy to extract component references which the tuple has as anies from self
+        struct Strategy<T> {
+            _t: PhantomData<T>,
+        }
+        impl<'a, SELF: HasComponent + 'a> tuple_info::ForeachTypeStrategie<'a> for Strategy<SELF> {
+            type Output = Option<&'a dyn Any>;
+
+            type Input = &'a SELF;
+
+            fn action<T: 'static>(
+                input: Self::Input,
+                _type_index: usize,
+            ) -> (Self::Output, Self::Input) {
+                (input.get_component::<T>().map(|t| t as &dyn Any), input)
+            }
+        }
+
+        // apply strategy
+        let anies = C::foreach_type::<Strategy<Self>>(self)
+            .0
+            .into_iter()
+            .collect::<Option<Vec<&dyn Any>>>()?;
+        // construct deconstruction reference
+        C::try_deconstruction(&anies)
     }
 
     fn component<C: 'static>(&self) -> &C {
@@ -48,13 +71,13 @@ pub trait HasComponent {
 
 pub fn reorder_components<'a, const LEN: usize>(
     mut components: [Option<&'a mut dyn Any>; LEN],
-    type_order: &[TypeId],
+    type_order: &[std::any::TypeId],
 ) -> Vec<&'a mut dyn Any> {
     const NONE: Option<&mut dyn Any> = None;
     let mut result: [Option<&'a mut dyn Any>; LEN] = [NONE; LEN];
 
     for (i, &tid) in type_order.iter().enumerate() {
-        // find the first component whose TypeId matches
+        // find the first component whose std::any::TypeId matches
         if let Some(pos) = components
             .iter()
             .position(|c| c.as_ref().map(|c| (**c).type_id()) == Some(tid))
@@ -71,9 +94,9 @@ pub fn reorder_components<'a, const LEN: usize>(
         .collect::<Option<Vec<_>>>()
         .unwrap_or(vec![])
 }
-pub trait HasComponents<'a, C: 'static + TupleInfo> {
-    fn _get_components(&'a self) -> Option<<C as TupleInfo>::DeconstructedReference<'a>>;
-}
+//pub trait HasComponents<'a, C: 'static + TupleInfo> {
+//    fn _get_components(&'a self) -> Option<<C as TupleInfo>::DeconstructedReference<'a>>;
+//}
 /// Implementation Example
 /// ----------------------
 /// ```
@@ -83,40 +106,37 @@ pub trait HasComponents<'a, C: 'static + TupleInfo> {
 ///    }
 /// }
 /// ```
-macro_rules! impl_has_components {
-    ($($T:ident),+) => {
-        impl<'a, $($T: 'static,)+ X: HasComponent> HasComponents<'a, ($($T,)+)> for X {
-            fn _get_components(&'a self) -> Option<<($($T,)+) as TupleInfo>::DeconstructedReference<'a>> {
-                Some((
-                    $( self.get_component::<$T>()?, )+
-                ))
-            }
-        }
-    };
-}
-impl_has_components!(A, B);
-impl_has_components!(A, B, C);
-impl_has_components!(A, B, C, D);
-impl_has_components!(A, B, C, D, E);
-impl_has_components!(A, B, C, D, E, F);
-impl_has_components!(A, B, C, D, E, F, G);
-impl_has_components!(A, B, C, D, E, F, G, H);
-impl_has_components!(A, B, C, D, E, F, G, H, I);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J, K);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M, N);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
-impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+//macro_rules! impl_has_components {
+//    ($($T:ident),+) => {
+//        impl<'a, $($T: 'static,)+ X: HasComponent> HasComponents<'a, ($($T,)+)> for X {
+//            fn _get_components(&'a self) -> Option<<($($T,)+) as TupleInfo>::DeconstructedReference<'a>> {
+//                Some((
+//                    $( self.get_component::<$T>()?, )+
+//                ))
+//            }
+//        }
+//    };
+//}
+//impl_has_components!(A, B);
+//impl_has_components!(A, B, C);
+//impl_has_components!(A, B, C, D);
+//impl_has_components!(A, B, C, D, E);
+//impl_has_components!(A, B, C, D, E, F);
+//impl_has_components!(A, B, C, D, E, F, G);
+//impl_has_components!(A, B, C, D, E, F, G, H);
+//impl_has_components!(A, B, C, D, E, F, G, H, I);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J, K);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M, N);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
+//impl_has_components!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
 
 #[cfg(test)]
 mod tests {
-    use crate::reorder_components;
 
     use super::HasComponent;
-    use tuple_info::TupleInfo;
-
     #[derive(HasComponent)]
     struct SampleBundle(usize, f32, String);
     #[test]
