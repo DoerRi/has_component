@@ -92,7 +92,7 @@ fn generate_has_component_impl(
     quote! {
         impl HasComponent for #struct_name {
             fn get_component<C: 'static>(&self) -> Option<&C> {
-                use std::any::Any;
+                use   std::any::Any;
 
                 use std::any::TypeId;
                 match std::any::TypeId::of::<C>() {
@@ -106,7 +106,7 @@ fn generate_has_component_impl(
             }
 
             fn get_mut_component<C: 'static>(&mut self) -> Option<&mut C> {
-                use std::any::Any;
+                use   std::any::Any;
                 use std::any::TypeId;
 
                 match std::any::TypeId::of::<C>() {
@@ -128,7 +128,7 @@ fn impl_component_extraction_unnamed(struct_name: proc_macro2::Ident, len: usize
 
     quote! {
             let #struct_name( #( #idents),* ) = self;
-            let components: [Option<&mut dyn std::any::Any>; #len] = [ #(Some(#idents)),* ];
+            let components: [Option<&mut dyn   std::any::Any>; #len] = [ #(Some(#idents)),* ];
     }
 }
 
@@ -152,25 +152,25 @@ fn impl_component_extraction_named(
         let #ident{
             #( #fields),*
         } = self;
-        let components: [Option<&mut dyn std::any::Any>; #count] = [
+        let components: [Option<&mut dyn   std::any::Any>; #count] = [
             #(Some(#fields)),*
         ];
     }
 }
 fn generate_has_mut_components(len: usize, component_extraction: TokenStream2) -> TokenStream2 {
     quote! {
-        fn get_mut_components<'a,C: TupleInfo>(
+        fn get_mut_components<'a,C: tuple_info::TupleInfo>(
             &'a mut self,
-        ) -> Option<<C as TupleInfo>::MutDeconstructedReference<'a>> {
+        ) -> Option<<C as tuple_info::TupleInfo>::MutDeconstructedReference<'a>> {
             pub fn reorder_components<'a, const LEN: usize>(
-                mut components: [Option<&'a mut dyn Any>; LEN],
-                type_order: &[TypeId],
-            ) -> Vec<&'a mut dyn Any> {
-                const NONE: Option<&mut dyn Any> = None;
-                let mut result: [Option<&'a mut dyn Any>; LEN] = [NONE; LEN];
+                mut components: [Option<&'a mut dyn  std::any::Any>; LEN],
+                type_order: &[std::any::TypeId],
+            ) -> Vec<&'a mut dyn  std::any::Any> {
+                const NONE: Option<&mut dyn  std::any::Any> = None;
+                let mut result: [Option<&'a mut dyn  std::any::Any>; LEN] = [NONE; LEN];
 
                 for (i, &tid) in type_order.iter().enumerate() {
-                    // find the first component whose TypeId matches
+                    // find the first component whose std::any::TypeId matches
                     if let Some(pos) = components
                         .iter()
                         .position(|c| c.as_ref().map(|c| (**c).type_id()) == Some(tid))
@@ -191,7 +191,7 @@ fn generate_has_mut_components(len: usize, component_extraction: TokenStream2) -
 
             let type_order = C::types();
             let mut components = reorder_components::<#len>(components, &type_order);
-            <C as TupleInfo>::try_from_mut( components)
+            <C as tuple_info::TupleInfo>::try_mut_deconstruction( components)
         }
     }
 }
@@ -219,13 +219,13 @@ fn named_struct(fields_named: FieldsNamed) -> Vec<HasComponentArms> {
         .map(|(field_ident, ty_ident)| HasComponentArms {
             get: quote! {
                 id if id == std::any::TypeId::of::<#ty_ident>() => {
-                    let any = &self.#field_ident as &dyn std::any::Any;
+                    let any = &self.#field_ident as &dyn   std::any::Any;
                     any.downcast_ref::<C>()
                 }
             },
             get_mut: quote! {
                 id if id == std::any::TypeId::of::<#ty_ident>() => {
-                    let any = &mut self.#field_ident as &mut dyn std::any::Any;
+                    let any = &mut self.#field_ident as &mut dyn   std::any::Any;
                     any.downcast_mut::<C>()
                 }
             },
@@ -250,13 +250,13 @@ fn unnamed_struct(fields_unnamed: FieldsUnnamed) -> Vec<HasComponentArms> {
         .map(|(field_number, ty_ident)| HasComponentArms {
             get: quote! {
                 id if id == std::any::TypeId::of::<#ty_ident>() => {
-                    let any = &self.#field_number as &dyn std::any::Any;
+                    let any = &self.#field_number as &dyn   std::any::Any;
                     any.downcast_ref::<C>()
                 }
             },
             get_mut: quote! {
                 id if id == std::any::TypeId::of::<#ty_ident>() => {
-                    let any = &mut self.#field_number as &mut dyn std::any::Any;
+                    let any = &mut self.#field_number as &mut dyn   std::any::Any;
                     any.downcast_mut::<C>()
                 }
             },
